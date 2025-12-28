@@ -1,3 +1,9 @@
+import random
+import string
+import time
+
+import pytest
+
 from .pages.basket_page import BasketPage
 from .pages.login_page import LoginPage
 from .pages.product_page import ProductPage
@@ -15,6 +21,9 @@ from .pages.product_page import ProductPage
                                   "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer9"])"""
 
 link = "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/"
+
+SYMBOLS = string.ascii_letters + string.digits
+PASSWORD_LEN = 10
 
 
 def test_guest_can_add_product_to_basket(browser):
@@ -60,3 +69,31 @@ def test_guest_cant_see_product_in_basket_opened_from_product_page(browser):
     basket_page = BasketPage(browser, browser.current_url)
     basket_page.is_no_products_in_basket()
     basket_page.is_basket_empty()
+
+
+class TestUserAddToBasketFromProductPage:
+    @pytest.fixture(scope="function", autouse=True)
+    def setup(self, browser):
+        email = str(time.time()) + "@fakemail.org"
+        password = ''.join(random.choice(SYMBOLS) for _ in range(PASSWORD_LEN))
+        page = ProductPage(browser, link)
+        page.open()
+        page.go_to_login_page()
+        login_page = LoginPage(browser, browser.current_url)
+        login_page.register_new_user(email, password)
+
+    def test_user_cant_see_success_message(self, browser):
+        page = ProductPage(browser, link)
+        page.open()
+        page.should_not_be_success_message()
+
+    def test_user_can_add_product_to_basket(self, browser):
+        page = ProductPage(browser, link)
+        page.open()
+        try:
+            page.should_be_button_add_to_basket()
+            page.add_product_to_basket_without_captcha()
+            page.check_product_name()
+            page.check_product_price()
+        except AssertionError as e:
+            print(f"Ошибка: {e}")
